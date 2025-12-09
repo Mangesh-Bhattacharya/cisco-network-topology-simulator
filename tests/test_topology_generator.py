@@ -60,7 +60,7 @@ class TestNetworkTopologyGenerator:
         )
         
         security_devices = [d for d in high_security['devices'] 
-                          if d['type'] in ['firewall', 'ips']]
+                        if d['type'] in ['firewall', 'ips']]
         
         assert len(security_devices) > 0
     
@@ -125,3 +125,39 @@ class TestNetworkTopologyGenerator:
         assert json_data is not None
         assert isinstance(json_data, str)
         assert 'devices' in json_data
+        assert 'links' in json_data
+    def test_invalid_parameters(self):
+        """Test handling of invalid parameters"""
+        with pytest.raises(ValueError):
+            self.generator.generate_topology(
+                num_routers=-1,
+                num_switches=2,
+                num_hosts=5
+            )
+        
+        with pytest.raises(ValueError):
+            self.generator.generate_topology(
+                network_type="invalid_type",
+                num_routers=2,
+                num_switches=2,
+                num_hosts=5
+            )
+            
+    def test_large_topology_performance(self):
+        """Test performance on large topology generation"""
+        import time
+        
+        start_time = time.time()
+        topology = self.generator.generate_topology(
+            num_routers=50,
+            num_switches=100,
+            num_hosts=500
+        )
+        end_time = time.time()
+        
+        assert topology is not None
+        assert topology['total_devices'] == 650
+        assert (end_time - start_time) < 10  # Should complete within 10 seconds
+        
+if __name__ == "__main__":
+    pytest.main()
