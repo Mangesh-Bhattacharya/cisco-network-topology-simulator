@@ -25,9 +25,9 @@ boto3==1.28.25
 azure-mgmt-network==25.0.0
 google-cloud-compute==1.14.0
 
-# API stack – versions that support Pydantic v2
-fastapi==0.103.2           # explicitly released with Pydantic v2.4 compatibility [web:116][web:123]
-pydantic>=2.4,<3.0         # safe v2 range that matches FastAPI 0.103.x [web:115][web:117]
+# API stack – use FastAPI + Pydantic v1 combo to avoid typing-extensions conflict
+fastapi==0.95.2            # still widely used; built on Pydantic v1 [web:112][web:121]
+pydantic==1.10.14          # v1 line, lower typing-extensions requirement [web:117][web:120]
 uvicorn==0.23.2
 sqlalchemy==2.0.20
 
