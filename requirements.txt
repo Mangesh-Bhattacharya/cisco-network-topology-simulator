@@ -1,38 +1,6 @@
-streamlit==1.28.0
-plotly==5.17.0
-networkx==3.1
-
-# Scientific / ML stack
-numpy>=1.22,<1.25          # compatible with TF 2.13 [web:96]
-pandas>=2.0,<2.2
-scikit-learn>=1.3,<1.5
-tensorflow==2.13.0
-
-requests==2.31.0
-python-dotenv==1.0.0
-pyyaml==6.0.1
-jinja2==3.1.2
-cryptography==41.0.4
-paramiko==3.3.1
-netmiko==4.2.0
-python-nmap==0.7.1
-scapy==2.5.0
-graphviz==0.20.1
-pillow==10.0.0
-reportlab==4.0.4
-openpyxl==3.1.2
-boto3==1.28.25
-azure-mgmt-network==25.0.0
-google-cloud-compute==1.14.0
-
-# API stack – use FastAPI + Pydantic v1 combo to avoid typing-extensions conflict
-fastapi==0.95.2            # still widely used; built on Pydantic v1 [web:112][web:121]
-pydantic==1.10.14          # v1 line, lower typing-extensions requirement [web:117][web:120]
-uvicorn==0.23.2
-sqlalchemy==2.0.20
-
-# Dev / tooling
-pytest==7.4.2
-black==23.9.1
-flake8==6.1.0
-mypy==1.5.1
+streamlit>=1.28.0
+plotly>=5.17.0
+networkx>=3.1
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
