@@ -10,11 +10,21 @@ import networkx as nx
 import pandas as pd
 from datetime import datetime
 import json
-from src.topology_generator import NetworkTopologyGenerator
-from src.security_auditor import SecurityAuditor
-from src.cloud_integrator import CloudNetworkBuilder
-from src.analytics_engine import NetworkAnalytics
-from src.packet_tracer_exporter import PacketTracerExporter
+import sys
+import os
+
+# Add src to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+
+try:
+    from topology_generator import NetworkTopologyGenerator
+    from security_auditor import SecurityAuditor
+    from cloud_integrator import CloudNetworkBuilder
+    from analytics_engine import NetworkAnalytics
+    from packet_tracer_exporter import PacketTracerExporter
+except ImportError as e:
+    st.error(f"Import Error: {e}")
+    st.stop()
 
 # Page configuration
 st.set_page_config(
@@ -68,7 +78,6 @@ if 'analytics_data' not in st.session_state:
 
 # Sidebar
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/000000/cisco-logo.png", width=100)
     st.title("🌐 Network Simulator")
     st.markdown("---")
     
@@ -188,29 +197,32 @@ elif page == "🔧 Topology Builder":
         
         if st.button("🚀 Generate Topology", type="primary"):
             with st.spinner("Generating network topology..."):
-                generator = NetworkTopologyGenerator()
-                topology = generator.generate_topology(
-                    network_type=network_type.lower(),
-                    num_routers=num_routers,
-                    num_switches=num_switches,
-                    num_hosts=num_hosts,
-                    security_level=security_level.lower(),
-                    redundancy=redundancy,
-                    ai_optimize=ai_optimize
-                )
-                st.session_state.topology = topology
-                
-                st.markdown('<div class="success-box">✅ Network topology generated successfully!</div>', unsafe_allow_html=True)
-                
-                # Display topology stats
-                st.markdown("### 📊 Topology Statistics")
-                col_x, col_y, col_z = st.columns(3)
-                with col_x:
-                    st.metric("Total Devices", topology['total_devices'])
-                with col_y:
-                    st.metric("Total Links", topology['total_links'])
-                with col_z:
-                    st.metric("Network Segments", topology['segments'])
+                try:
+                    generator = NetworkTopologyGenerator()
+                    topology = generator.generate_topology(
+                        network_type=network_type.lower(),
+                        num_routers=num_routers,
+                        num_switches=num_switches,
+                        num_hosts=num_hosts,
+                        security_level=security_level.lower(),
+                        redundancy=redundancy,
+                        ai_optimize=ai_optimize
+                    )
+                    st.session_state.topology = topology
+                    
+                    st.markdown('<div class="success-box">✅ Network topology generated successfully!</div>', unsafe_allow_html=True)
+                    
+                    # Display topology stats
+                    st.markdown("### 📊 Topology Statistics")
+                    col_x, col_y, col_z = st.columns(3)
+                    with col_x:
+                        st.metric("Total Devices", topology['total_devices'])
+                    with col_y:
+                        st.metric("Total Links", topology['total_links'])
+                    with col_z:
+                        st.metric("Network Segments", topology['segments'])
+                except Exception as e:
+                    st.error(f"Error generating topology: {str(e)}")
     
     with col2:
         st.markdown("### 📋 Templates")
@@ -231,67 +243,70 @@ elif page == "🔧 Topology Builder":
     if st.session_state.topology:
         st.markdown("### 🗺️ Network Visualization")
         
-        # Create network graph
-        G = nx.Graph()
-        
-        # Add nodes
-        for device in st.session_state.topology.get('devices', []):
-            G.add_node(device['name'], type=device['type'])
-        
-        # Add edges
-        for link in st.session_state.topology.get('links', []):
-            G.add_edge(link['source'], link['target'])
-        
-        # Create plotly figure
-        pos = nx.spring_layout(G)
-        
-        edge_trace = go.Scatter(
-            x=[],
-            y=[],
-            line=dict(width=2, color='#888'),
-            hoverinfo='none',
-            mode='lines')
-        
-        for edge in G.edges():
-            x0, y0 = pos[edge[0]]
-            x1, y1 = pos[edge[1]]
-            edge_trace['x'] += tuple([x0, x1, None])
-            edge_trace['y'] += tuple([y0, y1, None])
-        
-        node_trace = go.Scatter(
-            x=[],
-            y=[],
-            text=[],
-            mode='markers+text',
-            hoverinfo='text',
-            marker=dict(
-                showscale=True,
-                colorscale='YlGnBu',
-                size=20,
-                colorbar=dict(
-                    thickness=15,
-                    title='Node Connections',
-                    xanchor='left',
-                    titleside='right'
-                )
-            ))
-        
-        for node in G.nodes():
-            x, y = pos[node]
-            node_trace['x'] += tuple([x])
-            node_trace['y'] += tuple([y])
-            node_trace['text'] += tuple([node])
-        
-        fig = go.Figure(data=[edge_trace, node_trace],
-                       layout=go.Layout(
-                           showlegend=False,
-                           hovermode='closest',
-                           margin=dict(b=0,l=0,r=0,t=0),
-                           xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-                           yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
-                       )
-        
-        st.plotly_chart(fig, use_container_width=True)
+        try:
+            # Create network graph
+            G = nx.Graph()
+            
+            # Add nodes
+            for device in st.session_state.topology.get('devices', []):
+                G.add_node(device['name'], type=device['type'])
+            
+            # Add edges
+            for link in st.session_state.topology.get('links', []):
+                G.add_edge(link['source'], link['target'])
+            
+            # Create plotly figure
+            pos = nx.spring_layout(G)
+            
+            edge_trace = go.Scatter(
+                x=[],
+                y=[],
+                line=dict(width=2, color='#888'),
+                hoverinfo='none',
+                mode='lines')
+            
+            for edge in G.edges():
+                x0, y0 = pos[edge[0]]
+                x1, y1 = pos[edge[1]]
+                edge_trace['x'] += tuple([x0, x1, None])
+                edge_trace['y'] += tuple([y0, y1, None])
+            
+            node_trace = go.Scatter(
+                x=[],
+                y=[],
+                text=[],
+                mode='markers+text',
+                hoverinfo='text',
+                marker=dict(
+                    showscale=True,
+                    colorscale='YlGnBu',
+                    size=20,
+                    colorbar=dict(
+                        thickness=15,
+                        title='Node Connections',
+                        xanchor='left',
+                        titleside='right'
+                    )
+                ))
+            
+            for node in G.nodes():
+                x, y = pos[node]
+                node_trace['x'] += tuple([x])
+                node_trace['y'] += tuple([y])
+                node_trace['text'] += tuple([node])
+            
+            fig = go.Figure(data=[edge_trace, node_trace],
+                           layout=go.Layout(
+                               showlegend=False,
+                               hovermode='closest',
+                               margin=dict(b=0,l=0,r=0,t=0),
+                               xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                               yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+                           )
+            
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception as e:
+            st.error(f"Error visualizing topology: {str(e)}")
 
 elif page == "🔒 Security Audit":
     st.title("🔒 Security Audit Dashboard")
@@ -319,14 +334,17 @@ elif page == "🔒 Security Audit":
             
             if st.button("🔍 Run Security Audit", type="primary"):
                 with st.spinner("Running comprehensive security audit..."):
-                    auditor = SecurityAuditor(st.session_state.topology)
-                    report = auditor.run_audit(
-                        audit_types=audit_type,
-                        compliance_standards=compliance_standards
-                    )
-                    st.session_state.security_report = report
-                    
-                    st.markdown('<div class="success-box">✅ Security audit completed!</div>', unsafe_allow_html=True)
+                    try:
+                        auditor = SecurityAuditor(st.session_state.topology)
+                        report = auditor.run_audit(
+                            audit_types=audit_type,
+                            compliance_standards=compliance_standards
+                        )
+                        st.session_state.security_report = report
+                        
+                        st.markdown('<div class="success-box">✅ Security audit completed!</div>', unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"Error running audit: {str(e)}")
         
         with col2:
             st.markdown("### 🎯 Quick Stats")
@@ -404,19 +422,22 @@ elif page == "☁️ Cloud Integration":
             
             if st.button("🚀 Deploy Cloud Integration", type="primary"):
                 with st.spinner("Deploying cloud integration..."):
-                    cloud_builder = CloudNetworkBuilder()
-                    result = cloud_builder.create_hybrid_topology(
-                        on_premise=st.session_state.topology,
-                        cloud_provider=cloud_provider.lower(),
-                        integration_type=integration_type.lower(),
-                        vpn_encryption=vpn_encryption,
-                        bandwidth=bandwidth
-                    )
-                    
-                    st.markdown('<div class="success-box">✅ Cloud integration deployed successfully!</div>', unsafe_allow_html=True)
-                    
-                    st.markdown("### 📊 Deployment Summary")
-                    st.json(result)
+                    try:
+                        cloud_builder = CloudNetworkBuilder()
+                        result = cloud_builder.create_hybrid_topology(
+                            on_premise=st.session_state.topology,
+                            cloud_provider=cloud_provider.lower(),
+                            integration_type=integration_type.lower(),
+                            vpn_encryption=vpn_encryption,
+                            bandwidth=bandwidth
+                        )
+                        
+                        st.markdown('<div class="success-box">✅ Cloud integration deployed successfully!</div>', unsafe_allow_html=True)
+                        
+                        st.markdown("### 📊 Deployment Summary")
+                        st.json(result)
+                    except Exception as e:
+                        st.error(f"Error deploying cloud integration: {str(e)}")
         
         with col2:
             st.markdown("### 💰 Cost Estimation")
@@ -440,11 +461,14 @@ elif page == "📊 Analytics":
     else:
         if st.button("🔄 Run Analytics", type="primary"):
             with st.spinner("Analyzing network performance..."):
-                analytics = NetworkAnalytics(st.session_state.topology)
-                data = analytics.analyze()
-                st.session_state.analytics_data = data
-                
-                st.success("✅ Analytics completed!")
+                try:
+                    analytics = NetworkAnalytics(st.session_state.topology)
+                    data = analytics.analyze()
+                    st.session_state.analytics_data = data
+                    
+                    st.success("✅ Analytics completed!")
+                except Exception as e:
+                    st.error(f"Error running analytics: {str(e)}")
         
         if st.session_state.analytics_data:
             col1, col2, col3, col4 = st.columns(4)
@@ -523,21 +547,32 @@ elif page == "📥 Export":
             
             if st.button("📥 Export", type="primary"):
                 with st.spinner(f"Exporting to {export_format}..."):
-                    exporter = PacketTracerExporter(st.session_state.topology)
-                    
-                    if "Packet Tracer" in export_format:
-                        file_data = exporter.export_to_pkt(
-                            include_configs=include_configs,
-                            include_docs=include_docs
-                        )
-                        st.download_button(
-                            label="⬇️ Download .pkt File",
-                            data=file_data,
-                            file_name=f"network_topology_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkt",
-                            mime="application/octet-stream"
-                        )
-                    
-                    st.markdown('<div class="success-box">✅ Export completed successfully!</div>', unsafe_allow_html=True)
+                    try:
+                        exporter = PacketTracerExporter(st.session_state.topology)
+                        
+                        if "Packet Tracer" in export_format:
+                            file_data = exporter.export_to_pkt(
+                                include_configs=include_configs,
+                                include_docs=include_docs
+                            )
+                            st.download_button(
+                                label="⬇️ Download .pkt File",
+                                data=file_data,
+                                file_name=f"network_topology_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkt",
+                                mime="application/octet-stream"
+                            )
+                        elif "JSON" in export_format:
+                            json_data = json.dumps(st.session_state.topology, indent=2)
+                            st.download_button(
+                                label="⬇️ Download JSON File",
+                                data=json_data,
+                                file_name=f"topology_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                                mime="application/json"
+                            )
+                        
+                        st.markdown('<div class="success-box">✅ Export completed successfully!</div>', unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"Error exporting: {str(e)}")
         
         with col2:
             st.markdown("### 📄 Documentation")
