@@ -1,8 +1,3 @@
-"""
-Network Topology Generator
-AI-powered network topology generation with intelligent device placement
-"""
-
 import networkx as nx
 import random
 from typing import Dict, List, Optional
@@ -41,8 +36,26 @@ class NetworkTopologyGenerator:
             
         Returns:
             Dictionary containing topology data
+            
+        Raises:
+            ValueError: If parameters are invalid
         """
         
+        # Validate input parameters
+        if num_routers < 0 or num_switches < 0 or num_hosts < 0:
+            raise ValueError("Device counts must be non-negative")
+        
+        # Validate network type
+        valid_network_types = ["enterprise", "datacenter", "campus", "cloud", "hybrid"]
+        if network_type not in valid_network_types:
+            raise ValueError(f"Invalid network_type '{network_type}'. Must be one of: {valid_network_types}")
+        
+        # Validate security level
+        valid_security_levels = ["low", "medium", "high", "critical"]
+        if security_level not in valid_security_levels:
+            raise ValueError(f"Invalid security_level '{security_level}'. Must be one of: {valid_security_levels}")
+        
+        # Reset state
         self.devices = []
         self.links = []
         
@@ -50,10 +63,10 @@ class NetworkTopologyGenerator:
         core_routers = self._generate_routers(num_routers, "core")
         
         # Generate distribution switches
-        dist_switches = self._generate_switches(num_switches // 2, "distribution")
+        dist_switches = self._generate_switches(max(num_switches // 2, 0), "distribution")
         
         # Generate access switches
-        access_switches = self._generate_switches(num_switches // 2, "access")
+        access_switches = self._generate_switches(max(num_switches - len(dist_switches), 0), "access")
         
         # Generate hosts
         hosts = self._generate_hosts(num_hosts)
@@ -211,48 +224,92 @@ class NetworkTopologyGenerator:
                 })
         
         # Connect distribution switches to core routers
-        for dist_sw in dist_switches:
-            for router in routers[:2]:  # Connect to first 2 routers for redundancy
-                self.links.append({
-                    'source': router['name'],
-                    'target': dist_sw['name'],
-                    'type': 'distribution_link',
-                    'bandwidth': '10Gbps'
-                })
+        if len(dist_switches) > 0 and len(routers) > 0:
+            for dist_sw in dist_switches:
+                # Connect to first 2 routers for redundancy (or all if less than 2)
+                router_count = min(2, len(routers))
+                for router in routers[:router_count]:
+                    self.links.append({
+                        'source': router['name'],
+                        'target': dist_sw['name'],
+                        'type': 'distribution_link',
+                        'bandwidth': '10Gbps'
+                    })
         
         # Connect access switches to distribution switches
-        for i, access_sw in enumerate(access_switches):
-            dist_idx = i % len(dist_switches)
-            self.links.append({
-                'source': dist_switches[dist_idx]['name'],
-                'target': access_sw['name'],
-                'type': 'access_link',
-                'bandwidth': '1Gbps'
-            })
-            
-            if redundancy and len(dist_switches) > 1:
-                # Add redundant link to another distribution switch
-                redundant_dist_idx = (dist_idx + 1) % len(dist_switches)
+        if len(access_switches) > 0 and len(dist_switches) > 0:
+            for i, access_sw in enumerate(access_switches):
+                dist_idx = i % len(dist_switches)
                 self.links.append({
-                    'source': dist_switches[redundant_dist_idx]['name'],
+                    'source': dist_switches[dist_idx]['name'],
                     'target': access_sw['name'],
-                    'type': 'access_link_redundant',
+                    'type': 'access_link',
                     'bandwidth': '1Gbps'
                 })
+                
+                if redundancy and len(dist_switches) > 1:
+                    # Add redundant link to another distribution switch
+                    redundant_dist_idx = (dist_idx + 1) % len(dist_switches)
+                    self.links.append({
+                        'source': dist_switches[redundant_dist_idx]['name'],
+                        'target': access_sw['name'],
+                        'type': 'access_link_redundant',
+                        'bandwidth': '1Gbps'
+                    })
         
-        # Connect hosts to access switches
-        hosts_per_switch = len(hosts) // len(access_switches)
-        for i, host in enumerate(hosts):
-            switch_idx = i // hosts_per_switch
-            if switch_idx >= len(access_switches):
-                switch_idx = len(access_switches) - 1
-            
-            self.links.append({
-                'source': access_switches[switch_idx]['name'],
-                'target': host['name'],
-                'type': 'host_link',
-                'bandwidth': '1Gbps'
-            })
+        # Connect hosts to access switches or distribution switches or routers
+        if len(hosts) > 0:
+            if len(access_switches) > 0:
+                # Connect hosts to access switches
+                hosts_per_switch = len(hosts) // len(access_switches)
+                if hosts_per_switch == 0:
+                    hosts_per_switch = 1
+                    
+                for i, host in enumerate(hosts):
+                    switch_idx = i // hosts_per_switch
+                    if switch_idx >= len(access_switches):
+                        switch_idx = len(access_switches) - 1
+                    
+                    self.links.append({
+                        'source': access_switches[switch_idx]['name'],
+                        'target': host['name'],
+                        'type': 'host_link',
+                        'bandwidth': '1Gbps'
+                    })
+            elif len(dist_switches) > 0:
+                # Connect hosts directly to distribution switches if no access switches
+                hosts_per_switch = len(hosts) // len(dist_switches)
+                if hosts_per_switch == 0:
+                    hosts_per_switch = 1
+                    
+                for i, host in enumerate(hosts):
+                    switch_idx = i // hosts_per_switch
+                    if switch_idx >= len(dist_switches):
+                        switch_idx = len(dist_switches) - 1
+                    
+                    self.links.append({
+                        'source': dist_switches[switch_idx]['name'],
+                        'target': host['name'],
+                        'type': 'host_link',
+                        'bandwidth': '1Gbps'
+                    })
+            elif len(routers) > 0:
+                # Connect hosts directly to routers if no switches
+                hosts_per_router = len(hosts) // len(routers)
+                if hosts_per_router == 0:
+                    hosts_per_router = 1
+                    
+                for i, host in enumerate(hosts):
+                    router_idx = i // hosts_per_router
+                    if router_idx >= len(routers):
+                        router_idx = len(routers) - 1
+                    
+                    self.links.append({
+                        'source': routers[router_idx]['name'],
+                        'target': host['name'],
+                        'type': 'host_link',
+                        'bandwidth': '1Gbps'
+                    })
     
     def _create_datacenter_topology(self, routers, dist_switches, access_switches, hosts, redundancy):
         """Create datacenter network topology (spine-leaf)"""
@@ -260,38 +317,49 @@ class NetworkTopologyGenerator:
         # Distribution switches act as leaf switches
         
         # Full mesh between spine and leaf
-        for spine in routers:
-            for leaf in dist_switches:
-                self.links.append({
-                    'source': spine['name'],
-                    'target': leaf['name'],
-                    'type': 'spine_leaf_link',
-                    'bandwidth': '40Gbps'
-                })
+        if len(routers) > 0 and len(dist_switches) > 0:
+            for spine in routers:
+                for leaf in dist_switches:
+                    self.links.append({
+                        'source': spine['name'],
+                        'target': leaf['name'],
+                        'type': 'spine_leaf_link',
+                        'bandwidth': '40Gbps'
+                    })
         
         # Connect access switches to leaf switches
-        for i, access_sw in enumerate(access_switches):
-            leaf_idx = i % len(dist_switches)
-            self.links.append({
-                'source': dist_switches[leaf_idx]['name'],
-                'target': access_sw['name'],
-                'type': 'leaf_access_link',
-                'bandwidth': '10Gbps'
-            })
+        if len(access_switches) > 0 and len(dist_switches) > 0:
+            for i, access_sw in enumerate(access_switches):
+                leaf_idx = i % len(dist_switches)
+                self.links.append({
+                    'source': dist_switches[leaf_idx]['name'],
+                    'target': access_sw['name'],
+                    'type': 'leaf_access_link',
+                    'bandwidth': '10Gbps'
+                })
         
         # Connect hosts (servers) to access switches
-        hosts_per_switch = len(hosts) // len(access_switches)
-        for i, host in enumerate(hosts):
-            switch_idx = i // hosts_per_switch
-            if switch_idx >= len(access_switches):
-                switch_idx = len(access_switches) - 1
-            
-            self.links.append({
-                'source': access_switches[switch_idx]['name'],
-                'target': host['name'],
-                'type': 'server_link',
-                'bandwidth': '10Gbps'
-            })
+        if len(hosts) > 0:
+            if len(access_switches) > 0:
+                hosts_per_switch = max(1, len(hosts) // len(access_switches))
+                for i, host in enumerate(hosts):
+                    switch_idx = min(i // hosts_per_switch, len(access_switches) - 1)
+                    self.links.append({
+                        'source': access_switches[switch_idx]['name'],
+                        'target': host['name'],
+                        'type': 'server_link',
+                        'bandwidth': '10Gbps'
+                    })
+            elif len(dist_switches) > 0:
+                hosts_per_switch = max(1, len(hosts) // len(dist_switches))
+                for i, host in enumerate(hosts):
+                    switch_idx = min(i // hosts_per_switch, len(dist_switches) - 1)
+                    self.links.append({
+                        'source': dist_switches[switch_idx]['name'],
+                        'target': host['name'],
+                        'type': 'server_link',
+                        'bandwidth': '10Gbps'
+                    })
     
     def _create_campus_topology(self, routers, dist_switches, access_switches, hosts, redundancy):
         """Create campus network topology"""
