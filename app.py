@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
+# Custom CSS for professional styling
 st.markdown("""
 <style>
     .stMetric {
@@ -100,13 +100,9 @@ if st.sidebar.button("🚀 Generate Topology", type="primary", use_container_wid
 
 
 def compute_hierarchical_positions(topology):
-    """
-    Compute deterministic 3-tier hierarchical layout positions.
-    Architecture: Core → Distribution → Access → Endpoints
-    """
+    """Compute deterministic 3-tier hierarchical layout"""
     devices = topology['devices']
     
-    # Group devices by type and layer
     routers = [d for d in devices if d['type'] == 'router']
     switches = [d for d in devices if d['type'] == 'switch']
     hosts = [d for d in devices if d['type'] == 'host']
@@ -114,23 +110,19 @@ def compute_hierarchical_positions(topology):
     ips_devices = [d for d in devices if d['type'] == 'ips']
     clouds = [d for d in devices if d['type'] == 'cloud']
     
-    # Separate distribution and access switches
     dist_switches = [s for s in switches if 'distribution' in s.get('subtype', '').lower()]
     access_switches = [s for s in switches if 'access' in s.get('subtype', '').lower()]
     
-    # If no subtypes defined, split switches into dist/access layers
     if not dist_switches and not access_switches and switches:
         mid = len(switches) // 2
         dist_switches = switches[:mid] if mid > 0 else []
         access_switches = switches[mid:] if mid < len(switches) else switches
     
     pos = {}
-    
-    # Spacing parameters for clean layout
     spacing_x = 4.5
     spacing_y = 4.0
     
-    # Layer 0: Cloud (top-most)
+    # Layer 0: Cloud
     y_cloud = 5 * spacing_y
     if clouds:
         start_x = -spacing_x * (len(clouds) - 1) / 2
@@ -144,7 +136,7 @@ def compute_hierarchical_positions(topology):
         for i, router in enumerate(routers):
             pos[router['name']] = (start_x + i * spacing_x, y_core)
     
-    # Layer 2: Security Layer (Firewalls & IPS)
+    # Layer 2: Security
     y_security = 3.2 * spacing_y
     security_devices = firewalls + ips_devices
     if security_devices:
@@ -166,7 +158,7 @@ def compute_hierarchical_positions(topology):
         for i, switch in enumerate(access_switches):
             pos[switch['name']] = (start_x + i * spacing_x, y_access)
     
-    # Layer 5: Hosts/Endpoints (limit display for clean visualization)
+    # Layer 5: Hosts
     y_host = 0.8 * spacing_y
     max_hosts = min(30, len(hosts))
     if hosts:
@@ -179,20 +171,18 @@ def compute_hierarchical_positions(topology):
 
 
 def create_cisco_diagram(topology, show_bandwidth=True):
-    """
-    Create professional Cisco-style hierarchical network diagram with emoji icons
-    """
-    # Icon mapping for device types
+    """Create professional Cisco-style diagram with emoji icons"""
+    
+    # Icon mapping
     icon_map = {
-        'router': '🛜',      # Router icon
-        'switch': '🔀',      # Switch icon
-        'host': '💻',        # PC icon
-        'firewall': '🧱',    # Firewall icon
-        'ips': '🔒',         # IPS icon
-        'cloud': '☁️'        # Cloud icon
+        'router': '🛜',
+        'switch': '🔀',
+        'host': '💻',
+        'firewall': '🧱',
+        'ips': '🔒',
+        'cloud': '☁️'
     }
     
-    # Build NetworkX graph
     G = nx.Graph()
     
     for device in topology['devices']:
@@ -201,13 +191,11 @@ def create_cisco_diagram(topology, show_bandwidth=True):
     for link in topology['links']:
         G.add_edge(link['source'], link['target'], **link)
     
-    # Get hierarchical positions
     pos = compute_hierarchical_positions(topology)
     
-    # Create Plotly figure
     fig = go.Figure()
     
-    # ========== Draw Connection Lines (Background Layer) ==========
+    # Draw connection lines
     for u, v, data in G.edges(data=True):
         if u not in pos or v not in pos:
             continue
@@ -215,7 +203,6 @@ def create_cisco_diagram(topology, show_bandwidth=True):
         x0, y0 = pos[u]
         x1, y1 = pos[v]
         
-        # Draw connection line
         fig.add_trace(go.Scatter(
             x=[x0, x1],
             y=[y0, y1],
@@ -225,23 +212,17 @@ def create_cisco_diagram(topology, show_bandwidth=True):
             showlegend=False
         ))
         
-        # Add bandwidth label on link
         if show_bandwidth:
             bandwidth = data.get('bandwidth', '')
             if bandwidth:
                 mid_x, mid_y = (x0 + x1) / 2, (y0 + y1) / 2
                 
-                # Add bandwidth text with background
                 fig.add_annotation(
                     x=mid_x,
                     y=mid_y,
                     text=f"<b>{bandwidth}</b>",
                     showarrow=False,
-                    font=dict(
-                        size=10,
-                        family='Courier New, monospace',
-                        color='#DC2626'
-                    ),
+                    font=dict(size=10, family='Courier New, monospace', color='#DC2626'),
                     bgcolor='rgba(255, 255, 255, 0.95)',
                     bordercolor='#E5E7EB',
                     borderwidth=1,
@@ -249,7 +230,7 @@ def create_cisco_diagram(topology, show_bandwidth=True):
                     opacity=0.95
                 )
     
-    # ========== Draw Device Icons and Labels (Foreground Layer) ==========
+    # Draw device icons
     for node in G.nodes():
         if node not in pos:
             continue
@@ -260,10 +241,8 @@ def create_cisco_diagram(topology, show_bandwidth=True):
         ip_addr = node_data.get('ip_address', '')
         model = node_data.get('model', 'N/A')
         
-        # Get emoji icon for device type
         device_icon = icon_map.get(device_type, '📦')
         
-        # Add device icon as large emoji
         fig.add_trace(go.Scatter(
             x=[x],
             y=[y],
@@ -281,44 +260,29 @@ def create_cisco_diagram(topology, show_bandwidth=True):
             showlegend=False
         ))
         
-        # Device name label (below icon)
         fig.add_annotation(
             x=x,
             y=y - 0.55,
             text=f"<b>{node}</b>",
             showarrow=False,
-            font=dict(
-                size=11,
-                family='Arial, sans-serif',
-                color='#1F2937'
-            ),
+            font=dict(size=11, family='Arial, sans-serif', color='#1F2937'),
             yanchor='top'
         )
         
-        # IP address label (only for network infrastructure devices)
         if device_type in ['router', 'switch', 'firewall', 'ips']:
             fig.add_annotation(
                 x=x,
                 y=y - 0.85,
                 text=ip_addr,
                 showarrow=False,
-                font=dict(
-                    size=9,
-                    family='Courier New, monospace',
-                    color='#6B7280'
-                ),
+                font=dict(size=9, family='Courier New, monospace', color='#6B7280'),
                 yanchor='top'
             )
     
-    # ========== Layout Configuration ==========
     fig.update_layout(
         title=dict(
             text=f"<b>{topology['network_type'].upper()} Network Topology</b>",
-            font=dict(
-                size=26,
-                color='#111827',
-                family='Arial Black, sans-serif'
-            ),
+            font=dict(size=26, color='#111827', family='Arial Black, sans-serif'),
             x=0.5,
             xanchor='center',
             y=0.98,
@@ -328,18 +292,8 @@ def create_cisco_diagram(topology, show_bandwidth=True):
         hovermode='closest',
         plot_bgcolor='#F9FAFB',
         paper_bgcolor='#FFFFFF',
-        xaxis=dict(
-            showgrid=False,
-            zeroline=False,
-            showticklabels=False,
-            range=[-22, 22]
-        ),
-        yaxis=dict(
-            showgrid=False,
-            zeroline=False,
-            showticklabels=False,
-            range=[-1, 22]
-        ),
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-22, 22]),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-1, 22]),
         height=900,
         margin=dict(l=50, r=50, t=100, b=50)
     )
@@ -347,73 +301,187 @@ def create_cisco_diagram(topology, show_bandwidth=True):
     return fig
 
 
-# ========== Main Application Display ==========
+def generate_cisco_commands(topology):
+    """Generate Cisco IOS commands for Packet Tracer"""
+    commands = {}
+    
+    G = nx.Graph()
+    for device in topology['devices']:
+        G.add_node(device['name'], **device)
+    for link in topology['links']:
+        G.add_edge(link['source'], link['target'], **link)
+    
+    interface_counter = {}
+    
+    def get_next_interface(device_name, device_type):
+        if device_name not in interface_counter:
+            interface_counter[device_name] = {'gig': 0, 'fast': 0}
+        
+        if device_type == 'router':
+            num = interface_counter[device_name]['gig']
+            interface_counter[device_name]['gig'] += 1
+            return f"GigabitEthernet0/{num}"
+        elif device_type == 'switch':
+            num = interface_counter[device_name]['fast']
+            interface_counter[device_name]['fast'] += 1
+            return f"FastEthernet0/{num + 1}"
+        else:
+            num = interface_counter[device_name]['gig']
+            interface_counter[device_name]['gig'] += 1
+            return f"GigabitEthernet0/{num}"
+    
+    for device in topology['devices']:
+        device_name = device['name']
+        device_type = device['type']
+        ip_address = device.get('ip_address', '')
+        
+        if device_type == 'host':
+            commands[device_name] = f"""! Configuration for {device_name} (PC)
+! Use GUI in Packet Tracer:
+! 1. Click on {device_name}
+! 2. Go to Desktop > IP Configuration
+! 3. Set IP Address: {ip_address}
+! 4. Set Subnet Mask: 255.255.255.0
+! 5. Set Default Gateway: (router IP on same network)
+"""
+            continue
+        
+        config = f"""! Configuration for {device_name}
+enable
+configure terminal
+hostname {device_name}
+no ip domain-lookup
+service password-encryption
+enable secret cisco123
+
+"""
+        
+        if device_type == 'router':
+            config += """line console 0
+ password cisco
+ login
+ logging synchronous
+ exit
+
+line vty 0 4
+ password cisco
+ login
+ exit
+
+"""
+            neighbors = list(G.neighbors(device_name))
+            for neighbor in neighbors:
+                interface = get_next_interface(device_name, device_type)
+                
+                if ip_address:
+                    ip_parts = ip_address.split('.')
+                    interface_ip = f"{ip_parts[0]}.{ip_parts[1]}.{int(ip_parts[2])+1}.{ip_parts[3]}"
+                    
+                    config += f"""interface {interface}
+ description Connection to {neighbor}
+ ip address {interface_ip} 255.255.255.0
+ no shutdown
+ exit
+
+"""
+            
+            config += f"""router ospf 1
+ network {ip_address} 0.0.0.255 area 0
+ exit
+
+"""
+        
+        elif device_type == 'switch':
+            config += """line console 0
+ password cisco
+ login
+ exit
+
+line vty 0 15
+ password cisco
+ login
+ exit
+
+vlan 10
+ name DATA
+ exit
+
+vlan 99
+ name MANAGEMENT
+ exit
+
+interface vlan 99
+ ip address {ip_address} 255.255.255.0
+ no shutdown
+ exit
+
+"""
+            neighbors = list(G.neighbors(device_name))
+            for neighbor in neighbors:
+                neighbor_data = G.nodes[neighbor]
+                interface = get_next_interface(device_name, device_type)
+                
+                if neighbor_data['type'] in ['router', 'switch']:
+                    config += f"""interface {interface}
+ description Trunk to {neighbor}
+ switchport mode trunk
+ no shutdown
+ exit
+
+"""
+                else:
+                    config += f"""interface {interface}
+ description Access to {neighbor}
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast
+ no shutdown
+ exit
+
+"""
+        
+        config += """end
+write memory
+"""
+        
+        commands[device_name] = config
+    
+    return commands
+
+
+# Main Application
 if st.session_state.topology is not None:
     topology = st.session_state.topology
     
-    # Metrics Dashboard
     st.markdown("### 📊 Network Overview")
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric(
-            label="Total Devices",
-            value=topology['total_devices'],
-            delta=None,
-            help="Total number of network devices"
-        )
+        st.metric("Total Devices", topology['total_devices'])
     with col2:
-        st.metric(
-            label="Network Links",
-            value=topology['total_links'],
-            delta=None,
-            help="Total connections between devices"
-        )
+        st.metric("Network Links", topology['total_links'])
     with col3:
-        st.metric(
-            label="Network Segments",
-            value=topology['segments'],
-            delta=None,
-            help="Logical network segments"
-        )
+        st.metric("Network Segments", topology['segments'])
     with col4:
-        st.metric(
-            label="Security Devices",
-            value=topology['metadata'].get('security_devices', 0),
-            delta=None,
-            help="Firewalls and IPS/IDS systems"
-        )
+        st.metric("Security Devices", topology['metadata'].get('security_devices', 0))
     
     st.markdown("---")
     
-    # Create tabs for different views
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📊 Topology Diagram",
         "📋 Device Inventory",
         "🔗 Network Links",
-        "💾 Export & Config"
+        "💾 Export & Config",
+        "🖥️ Cisco Commands"
     ])
     
-    # ========== Tab 1: Topology Diagram ==========
     with tab1:
         st.markdown("### 🎨 Network Topology Visualization")
-        st.markdown("Interactive diagram showing hierarchical network architecture")
         
         try:
             fig = create_cisco_diagram(topology, show_bandwidth)
-            st.plotly_chart(fig, use_container_width=True, config={
-                'displayModeBar': True,
-                'displaylogo': False,
-                'toImageButtonOptions': {
-                    'format': 'png',
-                    'filename': f'{network_type}_topology',
-                    'height': 1200,
-                    'width': 1600,
-                    'scale': 2
-                }
-            })
+            st.plotly_chart(fig, use_container_width=True)
             
-            # Device Legend
             st.markdown("---")
             st.markdown("### 🎨 Device Legend")
             cols = st.columns(6)
@@ -429,30 +497,16 @@ if st.session_state.topology is not None:
                 st.markdown("🔒 **IPS/IDS**")
             with cols[5]:
                 st.markdown("☁️ **Cloud**")
-            
-            # Network layers explanation
-            with st.expander("ℹ️ Network Architecture Layers"):
-                st.markdown("""
-                **Hierarchical Network Design:**
-                - **Layer 5 (Top):** ☁️ Cloud Services & External Connectivity
-                - **Layer 4:** 🛜 Core Routers - High-speed backbone routing
-                - **Layer 3:** 🧱🔒 Security Layer - Firewalls and IPS/IDS
-                - **Layer 2:** 🔀 Distribution Switches - Inter-VLAN routing
-                - **Layer 1:** 🔀 Access Switches - End-device connectivity
-                - **Layer 0 (Bottom):** 💻 Endpoints - Workstations and servers
-                """)
                 
         except Exception as e:
-            st.error(f"❌ Error creating visualization: {str(e)}")
-            with st.expander("🔍 View Error Details"):
+            st.error(f"❌ Error: {str(e)}")
+            with st.expander("🔍 Details"):
                 import traceback
                 st.code(traceback.format_exc())
     
-    # ========== Tab 2: Device Inventory ==========
     with tab2:
         st.markdown("### 📋 Complete Device Inventory")
         
-        # Group devices by type
         device_types = {}
         for device in topology['devices']:
             dev_type = device['type']
@@ -460,258 +514,72 @@ if st.session_state.topology is not None:
                 device_types[dev_type] = []
             device_types[dev_type].append(device)
         
-        # Device type icons for headers
-        type_icons = {
-            'router': '🛜',
-            'switch': '🔀',
-            'host': '💻',
-            'firewall': '🧱',
-            'ips': '🔒',
-            'cloud': '☁️'
-        }
+        type_icons = {'router': '🛜', 'switch': '🔀', 'host': '💻', 'firewall': '🧱', 'ips': '🔒', 'cloud': '☁️'}
         
-        # Display each device type in expandable sections
         for dev_type, devices in sorted(device_types.items()):
             icon = type_icons.get(dev_type, '📦')
-            with st.expander(
-                f"{icon} **{dev_type.upper()}** ({len(devices)} devices)",
-                expanded=(dev_type in ['router', 'switch'])
-            ):
+            with st.expander(f"{icon} **{dev_type.upper()}** ({len(devices)} devices)", expanded=True):
                 df = pd.DataFrame(devices)
-                cols_to_show = ['name', 'type', 'ip_address', 'model']
-                # Add subtype if exists
+                
+                # Fix for missing columns
+                cols_to_show = ['name', 'type']
+                if 'ip_address' in df.columns:
+                    cols_to_show.append('ip_address')
+                if 'model' in df.columns:
+                    cols_to_show.append('model')
                 if 'subtype' in df.columns:
                     cols_to_show.append('subtype')
                 
-                st.dataframe(
-                    df[cols_to_show],
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "name": st.column_config.TextColumn("Device Name", width="medium"),
-                        "type": st.column_config.TextColumn("Type", width="small"),
-                        "ip_address": st.column_config.TextColumn("IP Address", width="medium"),
-                        "model": st.column_config.TextColumn("Model", width="medium"),
-                    }
-                )
+                st.dataframe(df[cols_to_show], use_container_width=True, hide_index=True)
     
-    # ========== Tab 3: Network Links ==========
     with tab3:
         st.markdown("### 🔗 Network Connection Matrix")
         
         links_df = pd.DataFrame(topology['links'])
-        
-        st.dataframe(
-            links_df,
-            use_container_width=True,
-            height=400,
-            column_config={
-                "source": st.column_config.TextColumn("Source Device", width="medium"),
-                "target": st.column_config.TextColumn("Target Device", width="medium"),
-                "type": st.column_config.TextColumn("Link Type", width="small"),
-                "bandwidth": st.column_config.TextColumn("Bandwidth", width="small"),
-            }
-        )
-        
-        # Link Statistics
-        st.markdown("---")
-        st.markdown("### 📈 Link Statistics & Analysis")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # Link types distribution
-            link_types = links_df['type'].value_counts()
-            fig_types = go.Figure(data=[
-                go.Bar(
-                    x=link_types.index,
-                    y=link_types.values,
-                    marker_color='#3B82F6',
-                    text=link_types.values,
-                    textposition='auto',
-                )
-            ])
-            fig_types.update_layout(
-                title="Links by Type",
-                xaxis_title="Link Type",
-                yaxis_title="Count",
-                height=350,
-                plot_bgcolor='#F9FAFB',
-                paper_bgcolor='#FFFFFF',
-                showlegend=False
-            )
-            st.plotly_chart(fig_types, use_container_width=True)
-        
-        with col2:
-            # Summary metrics
-            st.markdown("#### Connection Summary")
-            st.metric("Total Connections", len(links_df))
-            st.metric("Unique Link Types", len(link_types))
-            
-            # Bandwidth distribution if available
-            if 'bandwidth' in links_df.columns:
-                bw_counts = links_df['bandwidth'].value_counts()
-                st.markdown("**Bandwidth Distribution:**")
-                for bw, count in bw_counts.items():
-                    st.write(f"• {bw}: {count} links")
+        st.dataframe(links_df, use_container_width=True, height=400)
     
-    # ========== Tab 4: Export & Configuration ==========
     with tab4:
-        st.markdown("### 💾 Export Options & Configuration")
+        st.markdown("### 💾 Export Options")
         
-        col1, col2 = st.columns(2)
+        if st.session_state.generator:
+            json_data = st.session_state.generator.get_topology_json()
+            st.download_button(
+                "📥 Download JSON",
+                json_data,
+                f"{network_type}_topology.json",
+                "application/json"
+            )
+    
+    with tab5:
+        st.markdown("### 🖥️ Cisco Packet Tracer Configuration Commands")
         
-        with col1:
-            st.markdown("#### 📥 Download Topology Data")
-            
-            if st.session_state.generator is not None:
-                # JSON Export
-                json_data = st.session_state.generator.get_topology_json()
-                st.download_button(
-                    label="📄 Download JSON Configuration",
-                    data=json_data,
-                    file_name=f"{network_type}_topology_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    mime="application/json",
-                    use_container_width=True
-                )
-                
-                # CSV Export for devices
-                devices_df = pd.DataFrame(topology['devices'])
-                csv_devices = devices_df.to_csv(index=False)
-                st.download_button(
-                    label="📊 Download Device List (CSV)",
-                    data=csv_devices,
-                    file_name=f"{network_type}_devices.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-                
-                # CSV Export for links
-                links_csv = links_df.to_csv(index=False)
-                st.download_button(
-                    label="🔗 Download Links List (CSV)",
-                    data=links_csv,
-                    file_name=f"{network_type}_links.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+        cisco_commands = generate_cisco_commands(topology)
         
-        with col2:
-            st.markdown("#### ⚙️ Topology Configuration")
+        for dev_type in ['router', 'switch', 'firewall', 'ips']:
+            devices = [d for d in topology['devices'] if d['type'] == dev_type]
+            if not devices:
+                continue
             
-            config_summary = {
-                'network_type': topology['network_type'],
-                'total_devices': topology['total_devices'],
-                'total_links': topology['total_links'],
-                'segments': topology['segments'],
-                'security_level': topology['security_level'],
-                'redundancy_enabled': topology['redundancy_enabled'],
-                'ai_optimized': topology['ai_optimized'],
-                'generation_timestamp': pd.Timestamp.now().isoformat()
-            }
+            type_icons = {'router': '🛜', 'switch': '🔀', 'firewall': '🧱', 'ips': '🔒'}
+            icon = type_icons.get(dev_type, '📦')
             
-            st.json(config_summary, expanded=True)
-            
-            # Device breakdown
-            st.markdown("**Device Breakdown:**")
-            device_counts = pd.DataFrame(topology['devices'])['type'].value_counts()
-            for dev_type, count in device_counts.items():
-                type_icons = {'router': '🛜', 'switch': '🔀', 'host': '💻', 
-                             'firewall': '🧱', 'ips': '🔒', 'cloud': '☁️'}
-                icon = type_icons.get(dev_type, '📦')
-                st.write(f"{icon} **{dev_type.capitalize()}:** {count}")
+            with st.expander(f"{icon} **{dev_type.upper()}** ({len(devices)} devices)", expanded=True):
+                for device in devices:
+                    if device['name'] in cisco_commands:
+                        st.markdown(f"##### {device['name']}")
+                        st.code(cisco_commands[device['name']], language='cisco')
+        
+        all_commands = "\n\n".join([
+            f"{'='*60}\nDevice: {name}\n{'='*60}\n{cmd}\n"
+            for name, cmd in cisco_commands.items()
+        ])
+        
+        st.download_button(
+            "📥 Download All Commands",
+            all_commands,
+            f"cisco_config_{network_type}.txt",
+            "text/plain"
+        )
 
 else:
-    # ========== Welcome Screen ==========
-    st.info("👈 **Get Started:** Configure your network topology using the sidebar and click **Generate Topology**")
-    
-    st.markdown("---")
-    st.markdown("## 🎯 Quick Start Examples")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("""
-        ### 🏢 Small Office Network
-        **Configuration:**
-        - 🛜 2 Routers
-        - 🔀 4 Switches
-        - 💻 20 Hosts
-        - 🛡️ Medium Security
-        
-        **Use Case:**  
-        Ideal for small-to-medium business with 20-50 employees.
-        Basic security with firewall protection.
-        """)
-    
-    with col2:
-        st.markdown("""
-        ### 🏭 Enterprise Campus
-        **Configuration:**
-        - 🛜 5 Routers
-        - 🔀 10 Switches
-        - 💻 50 Hosts
-        - 🛡️ High Security
-        
-        **Use Case:**  
-        Multi-building campus deployment with redundancy.
-        Advanced security with IPS/IDS systems.
-        """)
-    
-    with col3:
-        st.markdown("""
-        ### 🖥️ Data Center
-        **Configuration:**
-        - 🛜 10 Routers
-        - 🔀 20 Switches
-        - 💻 100 Hosts
-        - 🛡️ Critical Security
-        
-        **Use Case:**  
-        High-availability data center design.
-        Full redundancy and critical security controls.
-        """)
-    
-    st.markdown("---")
-    st.markdown("### 🚀 Features")
-    
-    feat_col1, feat_col2 = st.columns(2)
-    
-    with feat_col1:
-        st.markdown("""
-        **🎨 Visualization:**
-        - Professional Cisco-style diagrams
-        - Hierarchical network layouts
-        - Interactive exploration
-        - Export to high-res PNG
-        
-        **🤖 AI Optimization:**
-        - Intelligent topology design
-        - Automatic redundancy planning
-        - Security device placement
-        - Performance optimization
-        """)
-    
-    with feat_col2:
-        st.markdown("""
-        **📊 Analysis & Export:**
-        - Device inventory management
-        - Link analysis and statistics
-        - JSON/CSV data export
-        - Configuration documentation
-        
-        **🛡️ Security:**
-        - Firewall integration
-        - IPS/IDS placement
-        - Security level controls
-        - Compliance-ready designs
-        """)
-
-# Footer
-st.markdown("---")
-st.markdown("""
-<div style='text-align: center; color: #6B7280; padding: 20px;'>
-    <p><b>Cisco Network Topology Simulator</b> | AI-Powered Network Design Tool</p>
-    <p>Built for cybersecurity professionals, network engineers, and IT architects</p>
-</div>
-""", unsafe_allow_html=True)
+    st.info("👈 Configure and generate your topology using the sidebar")
